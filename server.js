@@ -30,6 +30,3 @@ app.get('/', (req, res) =>{
   res.send("Inventory management is running");
 })
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-// sarwarjahin
-// ZejysYKCwl9sGfpa
