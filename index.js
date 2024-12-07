@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 app.use(cors(
   {
     origin: ["https://inventory-management-client-pink.vercel.app"],
-    methods: ["POST", "GET"],
+    methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true
   }
 ));
