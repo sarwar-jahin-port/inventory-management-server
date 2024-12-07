@@ -12,7 +12,13 @@ const salesRoutes = require("./routes/salesRoutes")
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors(
+  {
+    origin: [""],
+    methods: ["POST", "GET"],
+    credentials: true
+  }
+));
 
 app.use("/api/stores", storeRoutes);
 app.use("/api/folders", folderRoutes);
