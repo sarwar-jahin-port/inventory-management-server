@@ -1,41 +1,51 @@
 const express = require("express");
-const multer = require("multer");
 const Product = require("../models/Product");
 const Sales = require("../models/Sales");
 const router = express.Router();
+const cloudinary = require('../config/cloudinaryConfig');
+const upload = require('../config/uploadConfig')
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Save uploaded files in the 'uploads/' directory
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`); // Rename file to avoid conflicts
-  },
-});
-const upload = multer({ storage });
+// Create a new product route
+// Use async for functions where you need to use 'await'
+router.post("/", upload, async (req, res) => {
+  if (req.file) {
+    try {
+      const result = await cloudinary.uploader.upload_stream(
+        { resource_type: 'auto' }, // Automatically detect file type
+        (error, cloudinaryResponse) => {
+          if (error) {
+            return res.status(500).json({ error: error.message });
+          }
 
-// Create a new product
-router.post("/", upload.single("image"), async (req, res) => {
-  try {
-    // Extract file data if provided
-    const imagePath = req.file ? req.file.path : null;
+          // Once uploaded, save the Cloudinary image URL to the database
+          const productData = {
+            name: req.body.name,
+            quantity: req.body.quantity,
+            source: req.body.source,
+            folder: req.body.folder,
+            image: cloudinaryResponse.secure_url, // Save the Cloudinary image URL
+          };
 
-    // Create a new product instance with both body data and the file path
-    const productData = {
-      ...req.body, // Spread other fields like name, quantity, source, folder
-      image: imagePath, // Add the uploaded file path
-    };
+          // Create and save the product with the Cloudinary URL
+          const product = new Product(productData);
+          product.save()
+            .then(() => res.status(201).json(product)) // Send a response after saving
+            .catch(err => res.status(500).json({ error: err.message }));
+        }
+      );
 
-    const product = new Product(productData);
-    await product.save();
-
-    res.status(201).json(product);
-  } catch (err) {
-    console.error("Error creating product:", err.message);
-    res.status(500).json({ error: err.message });
+      // Send the image buffer to Cloudinary
+      result.end(req.file.buffer); // Using the file buffer from memory
+    } catch (err) {
+      console.error("Error uploading image to Cloudinary:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  } else {
+    res.status(400).json({ error: "No file uploaded" });
   }
 });
+
+
 
 // Get all products
 router.get("/", async (req, res) => {

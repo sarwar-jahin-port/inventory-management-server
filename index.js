@@ -14,7 +14,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors(
   {
-    origin: ["https://inventory-management-client-pink.vercel.app"],
+    origin: ["https://inventory-management-client-pink.vercel.app", "http://localhost:5173"],
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true
   }
