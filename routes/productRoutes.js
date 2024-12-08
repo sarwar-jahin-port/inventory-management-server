@@ -45,8 +45,6 @@ router.post("/", upload, async (req, res) => {
   }
 });
 
-
-
 // Get all products
 router.get("/", async (req, res) => {
   try {
@@ -78,6 +76,59 @@ router.get("/folder/:folderId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Update Product by ID
+router.put("/:id", upload, async (req, res) => {
+  try {
+    const productId = req.params.id;
+
+    // Find the existing product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // If a new image is provided, upload it to Cloudinary
+    let imageUrl = product.image; // Use the existing image URL by default
+    
+    if (req.file) {
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto" }, // Automatically detect file type
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer); // Send the file buffer to Cloudinary
+      });
+
+      imageUrl = uploadResult.secure_url; // Update with the new image URL
+    }
+
+    // Update product fields
+    const updatedData = {
+      name: req.body.name || product.name,
+      quantity: req.body.quantity || product.quantity,
+      folder: req.body.folder || product.folder,
+      source: req.body.source || product.source,
+      image: imageUrl, // Use the updated image URL if a new image was uploaded
+    };
+
+    // Update the product in the database
+    const updatedProduct = await Product.findByIdAndUpdate(productId, updatedData, {
+      new: true, // Return the updated document
+      runValidators: true, // Ensure the updated fields adhere to the schema validation
+    });
+
+    res.status(200).json(updatedProduct);
+  } catch (error) {
+    console.error("Error updating product:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 
 // Stock update
 router.put("/:id/addStock", async (req, res) => {
@@ -151,14 +202,20 @@ router.put("/:id/subtractStock", async (req, res) => {
   }
 });
 
-// Delete a product
+// Delete Product by ID
 router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
   try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: "Product deleted" });
+    const deletedProduct = await Product.findByIdAndDelete(id);
+    if (!deletedProduct) return res.status(404).json({ error: "Product not found" });
+
+    res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
+    console.error("Error deleting product:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 module.exports = router;
